@@ -1,0 +1,74 @@
+// Example moneysync config. Copy to config.jsonc (git-ignored) and edit.
+//
+// JSON with comments; trailing commas are fine.
+// Secrets never go in this file: use "env:NAME" (environment variable) or
+// "file:/path" (file contents) for anything sensitive.
+{
+  "spreadsheet_id": "env:MONEYSYNC_SPREADSHEET_ID",
+  "timezone": "Europe/Berlin",           // decides what "this month" means
+
+  "google": {
+    "credentials_file": "env:GOOGLE_APPLICATION_CREDENTIALS",  // service-account key file
+    "access_token": "env:GOOGLE_ACCESS_TOKEN"                   // or a ready OAuth token
+  },
+
+  // Optional; this is the default (ECB rates, no key needed).
+  "fx": { "base_url": "https://api.frankfurter.dev/v1" },
+
+  "sources": {
+    "monarch": { "type": "monarch", "token": "env:MONARCH_TOKEN" },
+    "toshl":   { "type": "toshl",   "token": "env:TOSHL_TOKEN" }
+  },
+
+  // A target is one row per month to fill in.
+  "targets": [
+    {
+      "name": "personal-usd",
+      "source": "monarch",
+      "sheet": "Personal",                 // tab name
+      "header_row": 2,                     // row with column headers
+      // The month row is the one whose column A holds the month
+      // (a date, or text like "October 2026"). offset picks a row below it;
+      // label_column/label is a safety check on that row.
+      "row": { "month_column": "A", "offset": 0, "label_column": "B", "label": "USD" },
+
+      "exclude": { "categories": ["Paychecks", "Credit Card Payment"] },
+      "include_hidden": false,             // Monarch "hide from reports"
+      "skip_pending": false,
+
+      // First matching column wins. Inside a match, any listed value is
+      // enough. Case-insensitive; * and ? wildcards work.
+      // Available fields: categories, category_groups, category_types
+      // (expense|income|transfer), tags, accounts, merchants,
+      // description_contains. Use "all": [ {...}, {...} ] when several
+      // conditions must hold together (e.g. a transfer AND a tag).
+      "columns": [
+        { "header": "Rent",      "match": { "categories": ["Rent", "Mortgage"] } },
+        { "header": "Transport", "match": { "category_groups": ["Auto & Transport"] } },
+        { "header": "Food",      "match": { "category_groups": ["Food & Dining"] } },
+        { "header": "Transfers", "match": { "categories": ["Transfer"] } }
+        // Amounts are flipped so spending is positive. Add
+        // "keep_sign": true to a column to keep the source's sign.
+        // Add "column": "F" to pin a column by letter instead of header.
+      ],
+      "fallback": "Misc",                  // unmatched → this column (omit to just report them)
+
+      // Optional: write the month's average exchange rate to a cell.
+      "fx": { "from": "USD", "to": "EUR", "header": "Rate", "offset": 1 }
+    },
+    {
+      "name": "household-eur",
+      "source": "toshl",
+      "sheet": "Household",
+      "header_row": 2,
+      "row": { "month_column": "A" },
+      "currency": "EUR",                   // convert other currencies at the monthly average
+      "include": { "accounts": ["Joint*"] },
+      "columns": [
+        { "header": "Food",  "match": { "categories": ["Food & Drinks"] } },
+        { "header": "Bills", "match": { "categories": ["Home & Utilities"] } }
+      ],
+      "fallback": "Other"
+    }
+  ]
+}

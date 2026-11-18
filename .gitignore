@@ -1,0 +1,22 @@
+# Personal config and anything secret — never commit these
+config.jsonc
+config.json
+*.local.jsonc
+.env
+.env.*
+*.key
+*.pem
+*service-account*.json
+*credentials*.json
+client_secret*.json
+token*.json
+
+# Exported spreadsheets / data
+*.xlsx
+*.csv
+data/
+
+# Build output
+/moneysync
+/dist/
+*.exe
